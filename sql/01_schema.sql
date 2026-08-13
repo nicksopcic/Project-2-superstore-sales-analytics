@@ -1,0 +1,4 @@
+-- 01_schema.sql — star schema DDL and key documentation.
+-- Defines fact_sales (order-line grain) and dim_customer, dim_product,
+-- dim_geography, dim_date, including primary and foreign key relationships.
+-- Written in Phase 1.

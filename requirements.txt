@@ -1,0 +1,16 @@
+# Direct dependencies for the Superstore sales analytics project.
+# Pinned to the versions resolved on Python 3.13 (Windows).
+
+pandas==3.0.5
+numpy==2.5.2
+duckdb==1.5.5
+sqlalchemy==2.0.52
+matplotlib==3.11.1
+seaborn==0.13.2
+plotly==6.9.0
+statsmodels==0.14.6
+prophet==1.3.0
+scikit-learn==1.9.0
+pytest==9.1.1
+jupyterlab==4.6.3
+streamlit==1.61.1

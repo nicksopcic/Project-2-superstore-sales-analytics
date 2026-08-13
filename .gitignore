@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated data artifacts
+data/processed/*
+!data/processed/.gitkeep
+
+# Local DuckDB database
+db/*.duckdb
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/

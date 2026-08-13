@@ -1,0 +1,7 @@
+-- 02_fundamental_queries.sql — core aggregations against the star schema.
+-- Business questions:
+--   * Sales, profit, and margin % by Region, Segment, and Category.
+--   * Top 10 and bottom 10 Sub-Categories by total profit.
+--   * Sales and profit trend by year and by month.
+--   * Average discount by Category and Sub-Category.
+-- Written in Phase 3.

@@ -1,0 +1,7 @@
+-- 03_advanced_queries.sql — window functions and CTEs for operational questions.
+-- Business questions:
+--   * Running year-to-date sales per Region (window function ordered by date).
+--   * Sub-Category profit rank within each Region (RANK() OVER (PARTITION BY Region ...)).
+--   * Month-over-month sales growth %, overall and by Region (LAG()).
+--   * Lifetime sales, profit, and order count per customer (CTE feeding Pareto analysis).
+-- Written in Phase 4.
