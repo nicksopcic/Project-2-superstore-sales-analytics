@@ -1,2 +1,2 @@
--- 04_views.sql — reusable views over the star schema for reporting and the dashboard.
+-- 04_views.sql: reusable views over the star schema for reporting and the dashboard.
 -- Written in a later phase.

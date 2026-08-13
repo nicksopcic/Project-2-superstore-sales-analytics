@@ -1,1 +1,1 @@
-"""Root conftest — its presence puts the repository root on sys.path so tests can `import src`."""
+"""Root conftest. Its presence puts the repository root on sys.path so tests can `import src`."""
