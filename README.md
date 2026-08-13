@@ -51,18 +51,106 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Then, once the pipeline exists:
+Then build the database. Both steps are idempotent, so rerunning them rebuilds from the CSV:
 
 ```bash
-python -m src.ingest                  # load the raw CSV into db/superstore.duckdb
-python -m src.transform_star_schema   # build fact_sales + dimension tables
+python -m src.ingest                  # load the raw CSV into db/superstore.duckdb as stg_orders
+python -m src.transform_star_schema   # build the four dimensions and fact_sales
 pytest -q                             # data-quality and pipeline checks
+```
+
+Later phases add:
+
+```bash
 streamlit run app/streamlit_app.py    # dashboard
 ```
 
 ## Data model
 
-A Mermaid ERD of `fact_sales` and the four dimensions goes here in Phase 1.
+The flat source file is modelled as a star schema in DuckDB. `fact_sales` holds one row per
+order line at the grain of the source `Row ID`, and joins to four conformed dimensions.
+
+```mermaid
+erDiagram
+    dim_customer  ||--o{ fact_sales : "customer_key"
+    dim_product   ||--o{ fact_sales : "product_key"
+    dim_geography ||--o{ fact_sales : "geography_key"
+    dim_date      ||--o{ fact_sales : "order_date_key"
+    dim_date      ||--o{ fact_sales : "ship_date_key"
+
+    fact_sales {
+        int      row_id         PK "one product line on one order"
+        varchar  order_id       "degenerate dimension, 5009 orders"
+        date     order_date
+        date     ship_date
+        varchar  ship_mode      "degenerate dimension"
+        int      customer_key   FK
+        int      product_key    FK
+        int      geography_key  FK
+        int      order_date_key FK
+        int      ship_date_key  FK
+        double   sales          "additive"
+        int      quantity       "additive"
+        double   discount       "rate 0 to 0.8, average it"
+        double   profit         "additive, negative on 1871 rows"
+    }
+
+    dim_customer {
+        int     customer_key  PK
+        varchar customer_id   "natural key"
+        varchar customer_name
+        varchar segment       "Consumer, Corporate, Home Office"
+    }
+
+    dim_product {
+        int     product_key  PK
+        varchar product_id   "natural key, not unique"
+        varchar category     "3 values"
+        varchar sub_category "17 values"
+        varchar product_name
+    }
+
+    dim_geography {
+        int     geography_key PK
+        varchar country
+        varchar city
+        varchar state
+        int     postal_code   "nullable, 11 rows"
+        varchar region        "Central, East, South, West"
+    }
+
+    dim_date {
+        int     date_key     PK "YYYYMMDD"
+        date    full_date
+        int     year
+        int     quarter
+        int     month
+        varchar month_name
+        varchar year_month
+        int     day_of_month
+        int     day_of_week
+        varchar day_name
+        boolean is_weekend
+    }
+```
+
+| Table | Rows | Primary key |
+| --- | ---: | --- |
+| `fact_sales` | 9,994 | `row_id` |
+| `dim_customer` | 793 | `customer_key` |
+| `dim_product` | 1,894 | `product_key` |
+| `dim_geography` | 632 | `geography_key` |
+| `dim_date` | 1,464 | `date_key` |
+
+Every dimension uses an integer surrogate key, because none of the natural keys in this
+dataset is unique enough to serve as a primary key. 32 Product IDs are reused across two
+different product names, postal code 92024 covers both San Diego and Encinitas, and 11 rows
+have no postal code at all. `sql/01_schema.sql` documents each key and the reasoning.
+
+`dim_date` is a contiguous daily calendar from the first order date to the last ship date,
+1,464 days, rather than only the 1,236 dates on which orders were placed. The gapless spine
+keeps running YTD and month-over-month queries honest about quiet periods, and lets both
+`order_date_key` and `ship_date_key` resolve against the same dimension.
 
 ## Key findings
 
