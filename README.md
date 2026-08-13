@@ -9,8 +9,9 @@ to discount, and where is discounting quietly destroying margin?
 
 ## Dataset
 
-`data/raw/Sample_Superstore.csv` — a single flat table of ~9,994 US retail order-line records
+`data/raw/Sample_Superstore.csv` — a single flat table of 9,994 US retail order-line records
 covering customer, product, geography, sales, quantity, discount, and profit fields.
+Orders span **2017-01-03 to 2020-12-30**; ship dates run through 2021-01-05.
 
 | Field group | Columns |
 | --- | --- |
@@ -23,6 +24,23 @@ covering customer, product, geography, sales, quantity, discount, and profit fie
 This is the widely-distributed Tableau/community "Sample - Superstore" dataset, used here for
 demonstration and portfolio purposes. It is **not** proprietary company data, and no finding in
 this repository describes a real business.
+
+### Provenance
+
+Extracted from the `Orders` sheet of the Tableau Desktop 2020.4 sample workbook
+(`Sample - Superstore.xls`) with `pandas.read_excel`. Two normalizations were applied and nothing
+else — measures, dates, and text round-trip exactly against the source:
+
+- `Country/Region` renamed to `Country`, matching the `dim_geography` column naming.
+- `Postal Code` written as an integer rather than the float pandas infers from the 11 blank values
+  (all Burlington, Vermont). Those 11 blanks are preserved as empty, not imputed.
+
+The workbook's `People` (4 rows: regional manager by region) and `Returns` (800 rows: returned
+order IDs) sheets were not exported — no phase of the analysis uses them.
+
+Note that this 2020.4 edition dates orders 2017–2020, whereas the older, more commonly cited
+version of Superstore covers 2014–2017. Any comparison to published figures from that version
+will differ on absolute dates, though the row count and measures are the same.
 
 ## How to run
 
