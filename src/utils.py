@@ -19,6 +19,7 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 DB_PATH = PROJECT_ROOT / "db" / "superstore.duckdb"
 SQL_DIR = PROJECT_ROOT / "sql"
 REPORTS_DIR = PROJECT_ROOT / "reports"
+FIGURES_DIR = REPORTS_DIR / "figures"
 
 DIMENSION_TABLES = ("dim_customer", "dim_product", "dim_geography", "dim_date")
 FACT_TABLE = "fact_sales"
@@ -40,6 +41,40 @@ def table_exists(con: duckdb.DuckDBPyConnection, name: str) -> bool:
 
 def row_count(con: duckdb.DuckDBPyConnection, name: str) -> int:
     return con.execute(f'SELECT count(*) FROM "{name}"').fetchone()[0]
+
+
+def load_analysis_frame(source: str = "parquet") -> pd.DataFrame:
+    """Join the star schema back into one flat frame for pandas analysis.
+
+    The notebooks work from `data/processed/*.parquet` by default, so they run without a
+    live DuckDB file. Pass source="duckdb" to read the database instead.
+    """
+    if source == "parquet":
+        missing = [t for t in EXPORT_TABLES if not (PROCESSED_DIR / f"{t}.parquet").exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"Missing Parquet for {', '.join(missing)}. Run python -m src.data_quality first."
+            )
+        frames = {t: pd.read_parquet(PROCESSED_DIR / f"{t}.parquet") for t in EXPORT_TABLES}
+    elif source == "duckdb":
+        with connect(read_only=True) as con:
+            require_star_schema(con)
+            frames = {t: con.execute(f"SELECT * FROM {t}").df() for t in EXPORT_TABLES}
+    else:
+        raise ValueError("source must be 'parquet' or 'duckdb'")
+
+    dates = frames["dim_date"].rename(columns={"date_key": "order_date_key"})
+    return (
+        frames["fact_sales"]
+        .merge(frames["dim_customer"], on="customer_key", validate="many_to_one")
+        .merge(frames["dim_product"], on="product_key", validate="many_to_one")
+        .merge(frames["dim_geography"], on="geography_key", validate="many_to_one")
+        .merge(
+            dates[["order_date_key", "year", "quarter", "month", "month_name", "year_month"]],
+            on="order_date_key",
+            validate="many_to_one",
+        )
+    )
 
 
 def require_star_schema(con: duckdb.DuckDBPyConnection) -> None:
@@ -106,7 +141,7 @@ def markdown_table(df: pd.DataFrame, limit: int = 12) -> str:
     # A column whose values all sit below 1 is a rate, so it keeps four decimals. Everything
     # else takes two. Deciding per column keeps each column internally consistent.
     decimals: dict[str, int] = {}
-    for name, column in zip(columns, shown.columns):
+    for name, column in zip(columns, shown.columns, strict=True):
         if pd.api.types.is_float_dtype(shown[column]):
             values = shown[column].dropna().abs()
             decimals[name] = 4 if not values.empty and values.max() < 1 else 2
@@ -116,7 +151,7 @@ def markdown_table(df: pd.DataFrame, limit: int = 12) -> str:
     rows = [
         "| "
         + " | ".join(
-            format_cell(v, c, decimals.get(c)) for c, v in zip(columns, record)
+            format_cell(v, c, decimals.get(c)) for c, v in zip(columns, record, strict=True)
         )
         + " |"
         for record in shown.itertuples(index=False, name=None)
