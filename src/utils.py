@@ -70,7 +70,7 @@ def _prints_raw(column: str | None) -> bool:
     )
 
 
-def format_cell(value: object, column: str | None = None) -> str:
+def format_cell(value: object, column: str | None = None, decimals: int | None = None) -> str:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
     if isinstance(value, (pd.Timestamp, datetime, date)):
@@ -83,11 +83,12 @@ def format_cell(value: object, column: str | None = None) -> str:
     if isinstance(value, (float, np.floating)):
         if value == 0:
             return "0"
-        # Rates and proportions live below 1, where two decimals would erase the detail
-        # the query rounded to. Trailing zeros are stripped so 0.70 reads as 0.7.
-        if abs(value) < 1:
-            return f"{value:.4f}".rstrip("0")
-        return f"{value:,.2f}"
+        # Precision is chosen per column by markdown_table, not per value, so a column does
+        # not mix "-0.9" with "43.30". Rate columns sit below 1 and keep four places, where
+        # two would erase the detail the query rounded to.
+        places = decimals if decimals is not None else (4 if abs(value) < 1 else 2)
+        text = f"{value:,.{places}f}"
+        return text.rstrip("0").rstrip(".") if places == 4 else text
     if isinstance(value, (int, np.integer)):
         return str(value) if _prints_raw(column) else f"{value:,}"
     return str(value).replace("|", "\\|")
@@ -101,10 +102,23 @@ def markdown_table(df: pd.DataFrame, limit: int = 12) -> str:
     shown = df.head(limit)
     columns = [str(c) for c in shown.columns]
     numeric = {c for c in shown.columns if pd.api.types.is_numeric_dtype(shown[c])}
+
+    # A column whose values all sit below 1 is a rate, so it keeps four decimals. Everything
+    # else takes two. Deciding per column keeps each column internally consistent.
+    decimals: dict[str, int] = {}
+    for name, column in zip(columns, shown.columns):
+        if pd.api.types.is_float_dtype(shown[column]):
+            values = shown[column].dropna().abs()
+            decimals[name] = 4 if not values.empty and values.max() < 1 else 2
+
     header = "| " + " | ".join(columns) + " |"
     rule = "| " + " | ".join("---:" if c in numeric else "---" for c in shown.columns) + " |"
     rows = [
-        "| " + " | ".join(format_cell(v, c) for c, v in zip(columns, record)) + " |"
+        "| "
+        + " | ".join(
+            format_cell(v, c, decimals.get(c)) for c, v in zip(columns, record)
+        )
+        + " |"
         for record in shown.itertuples(index=False, name=None)
     ]
     body = "\n".join([header, rule, *rows])

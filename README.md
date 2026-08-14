@@ -179,19 +179,18 @@ gross profit is being erased before it reaches the bottom line.
 
 ## SQL analysis
 
-[`sql/02_fundamental_queries.sql`](sql/02_fundamental_queries.sql) holds 13 queries against
-`fact_sales` joined to the dimensions, each tagged with the business question it answers.
-`python -m src.run_sql_report` runs them and writes
-[reports/sql_fundamental_results.md](reports/sql_fundamental_results.md) with the result and
-the SQL side by side. Every query also runs as a test, so a renamed column breaks the build
-rather than the report.
+Two suites, 22 queries, each tagged with the business question it answers.
+`python -m src.run_sql_report` runs both and writes the results with the SQL side by side.
+Every query also runs as a test, so a renamed column breaks the build rather than the report.
 
-The suite covers sales, profit and margin by region, segment and category, the region by
-category cross-tab, top and bottom sub-categories by profit, yearly and monthly trend,
-seasonality, discount depth by category and sub-category, and fulfilment mix.
+| Suite | Queries | Covers | Results |
+| --- | ---: | --- | --- |
+| [`02_fundamental_queries.sql`](sql/02_fundamental_queries.sql) | 13 | Sales, profit and margin by region, segment and category; region by category cross-tab; top and bottom sub-categories; yearly and monthly trend; seasonality; discount depth; fulfilment mix | [report](reports/sql_fundamental_results.md) |
+| [`03_advanced_queries.sql`](sql/03_advanced_queries.sql) | 9 | Running YTD by region, sub-category rank within region, month-over-month and year-over-year growth, customer lifetime value, profit Pareto, loss-making customers | [report](reports/sql_advanced_results.md) |
 
-One result matters more than the rest. Banding every order line by its discount rate shows
-where the business stops making money:
+### Discounting is where the margin goes
+
+Banding every order line by its discount rate shows where the business stops making money:
 
 | Discount | Lines | Sales | Profit | Margin | Loss-making lines |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -205,6 +204,30 @@ where the business stops making money:
 Margin survives a 20% discount and collapses immediately above it. Past 20%, more than nine
 in ten lines lose money, and every line discounted 41% or more does. The 933 lines in that
 last band turn $128,632 of revenue into a $99,559 loss.
+
+One caveat on reading that table: discounts in this dataset cluster at 0% and 20% rather than
+spreading evenly, and the 1-10% band holds only 94 lines. The cliff between the 11-20% and
+21-30% bands is well evidenced, but the shape in between is not.
+
+### Profit is concentrated, and some customers cost money
+
+The Pareto query ranks all 793 customers by lifetime profit and accumulates their share:
+
+| Share of customers | Share of profit |
+| --- | ---: |
+| Top 5% | 39.0% |
+| Top 10% | 57.3% |
+| Top 20% | 81.4% |
+| Top 30% | 97.1% |
+
+Cumulative share passes 100% and keeps climbing to a peak of 124.9% at the 638th customer,
+because the remaining 155 give profit back. Those 155 loss-making customers, 19.5% of the
+book, lose $71,224 between them. Their average discount is 23.8% against 15.6% overall,
+which lands them on the wrong side of the cliff in the table above.
+
+Regionally, Tables is the worst sub-category in both the East and the South, Furnishings in
+Central, and Bookcases in the West. Central is the weakest region overall at a 7.9% margin
+with 31.9% of its lines losing money, against the West at 14.9% and 9.9%.
 
 ## Key findings
 
