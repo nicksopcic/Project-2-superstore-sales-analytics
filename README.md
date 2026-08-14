@@ -56,8 +56,9 @@ Then build the database. Both steps are idempotent, so rerunning them rebuilds f
 ```bash
 python -m src.ingest                  # load the raw CSV into db/superstore.duckdb as stg_orders
 python -m src.transform_star_schema   # build the four dimensions and fact_sales
-python -m src.utils                   # validate, write the DQ report, export Parquet
-pytest -q                             # 33 pipeline and data-quality tests
+python -m src.data_quality            # validate, write the DQ report, export Parquet
+python -m src.run_sql_report          # run the SQL suite, write the results report
+pytest -q                             # pipeline, data-quality, and SQL tests
 ```
 
 Later phases add:
@@ -155,7 +156,7 @@ keeps running YTD and month-over-month queries honest about quiet periods, and l
 
 ## Data quality
 
-`python -m src.utils` runs seven checks against the star schema and writes
+`python -m src.data_quality` runs seven checks against the star schema and writes
 [reports/data_quality_report.md](reports/data_quality_report.md). The same checks run as tests,
 so a regression in the source data fails the build rather than quietly reaching the analysis.
 
@@ -176,6 +177,35 @@ The headline number for the analysis ahead: `is_loss_making` (`profit < 0`) flag
 lines lose $156,131.29 against the $442,528.31 the profitable lines earn, so roughly a third of
 gross profit is being erased before it reaches the bottom line.
 
+## SQL analysis
+
+[`sql/02_fundamental_queries.sql`](sql/02_fundamental_queries.sql) holds 13 queries against
+`fact_sales` joined to the dimensions, each tagged with the business question it answers.
+`python -m src.run_sql_report` runs them and writes
+[reports/sql_fundamental_results.md](reports/sql_fundamental_results.md) with the result and
+the SQL side by side. Every query also runs as a test, so a renamed column breaks the build
+rather than the report.
+
+The suite covers sales, profit and margin by region, segment and category, the region by
+category cross-tab, top and bottom sub-categories by profit, yearly and monthly trend,
+seasonality, discount depth by category and sub-category, and fulfilment mix.
+
+One result matters more than the rest. Banding every order line by its discount rate shows
+where the business stops making money:
+
+| Discount | Lines | Sales | Profit | Margin | Loss-making lines |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0% | 4,798 | 1,087,908.47 | 320,987.60 | 29.51% | 0.0% |
+| 1-10% | 94 | 54,369.35 | 9,029.18 | 16.61% | 4.3% |
+| 11-20% | 3,709 | 792,152.89 | 91,756.30 | 11.58% | 14.0% |
+| 21-30% | 227 | 103,226.65 | -10,369.28 | -10.05% | 91.6% |
+| 31-40% | 233 | 130,911.24 | -25,448.19 | -19.44% | 88.8% |
+| 41%+ | 933 | 128,632.25 | -99,558.59 | -77.40% | 100.0% |
+
+Margin survives a 20% discount and collapses immediately above it. Past 20%, more than nine
+in ten lines lose money, and every line discounted 41% or more does. The 933 lines in that
+last band turn $128,632 of revenue into a $99,559 loss.
+
 ## Key findings
 
 Populated with real numbers once the analysis runs.
@@ -188,7 +218,7 @@ Populated with real numbers once the analysis runs.
 | `data/processed/` | Cleaned star-schema Parquet outputs (gitignored) |
 | `db/` | Local DuckDB database (gitignored) |
 | `sql/` | Schema, fundamental queries, advanced queries, views |
-| `src/` | Ingest, transform, profitability, forecasting, utilities |
+| `src/` | Ingest, transform, data quality, SQL runner, profitability, forecasting |
 | `notebooks/` | EDA, discount/profit, Pareto/CLV, forecasting |
 | `app/` | Streamlit dashboard |
 | `tests/` | Data-quality and pipeline tests |
