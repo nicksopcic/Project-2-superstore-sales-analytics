@@ -7,6 +7,9 @@ the three candidate natural keys in this dataset is actually unique:
   Postal Code    92024 covers both San Diego and Encinitas, and 11 rows have no postal code.
   Customer ID    unique here, given a surrogate key for consistency with the other dimensions.
 
+fact_sales carries is_loss_making (profit < 0) as a stored column rather than leaving it to
+each query, because the discount and margin work in later phases filters on it constantly.
+
 dim_date is a contiguous daily calendar spanning the earliest order date to the latest ship
 date, not just the 1,236 dates that appear as order dates. A gapless spine keeps the running
 YTD and month-over-month queries in Phase 4 honest about periods with no orders.
@@ -118,7 +121,8 @@ SELECT
     s."Sales"     AS sales,
     s."Quantity"  AS quantity,
     s."Discount"  AS discount,
-    s."Profit"    AS profit
+    s."Profit"    AS profit,
+    s."Profit" < 0 AS is_loss_making
 FROM stg_orders s
 JOIN dim_customer c
     ON s."Customer ID" = c.customer_id

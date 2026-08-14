@@ -56,7 +56,8 @@ Then build the database. Both steps are idempotent, so rerunning them rebuilds f
 ```bash
 python -m src.ingest                  # load the raw CSV into db/superstore.duckdb as stg_orders
 python -m src.transform_star_schema   # build the four dimensions and fact_sales
-pytest -q                             # data-quality and pipeline checks
+python -m src.utils                   # validate, write the DQ report, export Parquet
+pytest -q                             # 33 pipeline and data-quality tests
 ```
 
 Later phases add:
@@ -152,6 +153,29 @@ have no postal code at all. `sql/01_schema.sql` documents each key and the reaso
 keeps running YTD and month-over-month queries honest about quiet periods, and lets both
 `order_date_key` and `ship_date_key` resolve against the same dimension.
 
+## Data quality
+
+`python -m src.utils` runs seven checks against the star schema and writes
+[reports/data_quality_report.md](reports/data_quality_report.md). The same checks run as tests,
+so a regression in the source data fails the build rather than quietly reaching the analysis.
+
+Six checks pass outright: Row ID is unique, no line ships before it is ordered, all five foreign
+keys resolve with no nulls, measures stay in range, attributes are complete apart from a known
+gap, and the repeated order/product pairs are split lines rather than errors.
+
+Two findings need a human call rather than a code fix:
+
+- **11 rows have no postal code**, all in Burlington, Vermont. Preserved as null rather than
+  imputed, so any geography rollup on postal code excludes them.
+- **Rows 3406 and 3407 are byte-identical** across every field, on order `US-2017-150119`. This
+  is the one true duplicate in the file, as against seven legitimate split lines. It is left in
+  place, since dropping a source row is an analytical decision rather than a transform decision.
+
+The headline number for the analysis ahead: `is_loss_making` (`profit < 0`) flags **1,871 of
+9,994 line items, 18.7%**, carrying **$468,707.15 of the $2,297,200.86 in sales, 20.4%**. Those
+lines lose $156,131.29 against the $442,528.31 the profitable lines earn, so roughly a third of
+gross profit is being erased before it reaches the bottom line.
+
 ## Key findings
 
 Populated with real numbers once the analysis runs.
@@ -168,4 +192,4 @@ Populated with real numbers once the analysis runs.
 | `notebooks/` | EDA, discount/profit, Pareto/CLV, forecasting |
 | `app/` | Streamlit dashboard |
 | `tests/` | Data-quality and pipeline tests |
-| `reports/` | Findings write-up and figures |
+| `reports/` | Data quality report, findings write-up, and figures |
