@@ -106,18 +106,28 @@ def kpis(frame: pd.DataFrame) -> dict[str, float]:
 
 
 def kpi_row(frame: pd.DataFrame) -> None:
+    """Five metric cards.
+
+    Values are abbreviated ($2.3M rather than $2,297,201) because a metric card does not wrap
+    or shrink its text: at anything narrower than a maximised window with the sidebar closed,
+    the full figure silently truncates to "$2,29...", which is worse than useless on a
+    headline number. The exact figure goes in the tooltip and the table below the charts.
+    """
     values = kpis(frame)
 
     for column, (label, value, help_text) in zip(
         st.columns(5),
         [
-            ("Sales", f"${values['sales']:,.0f}", "Total sales across the filtered lines"),
-            ("Profit", f"${values['profit']:,.0f}", "Total profit across the filtered lines"),
-            ("Margin", f"{values['margin_pct']:.1f}%", "Profit as a share of sales"),
+            ("Sales", viz.currency(values["sales"]),
+             f"Total sales across the filtered lines: ${values['sales']:,.2f}"),
+            ("Profit", viz.currency(values["profit"]),
+             f"Total profit across the filtered lines: ${values['profit']:,.2f}"),
+            ("Margin", f"{values['margin_pct']:.1f}%",
+             "Profit as a share of sales"),
             ("Avg discount", f"{values['avg_discount']:.1%}",
              "Mean discount rate per order line"),
-            ("Loss-making lines", f"{values['pct_loss_making']:.1f}%",
-             "Share of lines with negative profit"),
+            ("Loss-making", f"{values['pct_loss_making']:.1f}%",
+             "Share of order lines with negative profit"),
         ],
         strict=True,
     ):
