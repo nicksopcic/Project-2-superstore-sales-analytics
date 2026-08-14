@@ -1,49 +1,101 @@
 # US Superstore Sales & Sales Operations Analytics
 
-Sales-operations analytics on the Sample Superstore dataset: a DuckDB star schema, a SQL
-analysis suite, Python modules for profitability and forecasting, and a Streamlit dashboard.
+[![CI](https://github.com/nicksopcic/Project-2-superstore-sales-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/nicksopcic/Project-2-superstore-sales-analytics/actions/workflows/ci.yml)
 
-**Guiding business question:** Which regions, segments, and product categories are profitable
-to discount, and where is discounting quietly destroying margin?
+A sales-operations analytics layer over four years of US retail order lines: a DuckDB star
+schema, a 22-query SQL suite, statistical analysis of discounting, a backtested sales forecast,
+and a Streamlit dashboard. Built the way a sales-ops team would need it, with every number
+reproducible from the raw file by four commands.
 
-## Dataset
+**The business question:** Which regions, segments, and product categories are profitable to
+discount, and where is discounting quietly destroying margin?
 
-`data/raw/Sample_Superstore.csv` holds 9,994 US retail order-line records covering customer,
-product, geography, sales, quantity, discount, and profit fields. Orders span 2017-01-03 to
-2020-12-30, and ship dates run through 2021-01-05.
+**The answer:** discounting past 20% destroys margin, it explains three quarters of the
+variation in margin across the business, and five sub-categories are routinely sold past the
+point where they stop paying for themselves.
 
-| Field group | Columns |
-| --- | --- |
-| Order | Row ID, Order ID, Order Date, Ship Date, Ship Mode |
-| Customer | Customer ID, Customer Name, Segment |
-| Geography | Country, City, State, Postal Code, Region |
-| Product | Product ID, Category, Sub-Category, Product Name |
-| Measures | Sales, Quantity, Discount, Profit |
+## Key findings
 
-This is the widely distributed Tableau/community "Sample - Superstore" dataset, used here for
-demonstration and portfolio purposes. It is not proprietary company data, and no finding in this
-repository describes a real business.
+**1. Margin survives a 20% discount and collapses immediately above it.** Lines discounted 11
+to 20% return an 11.58% margin. The very next band, 21 to 30%, returns **-10.05%**, and 91.6%
+of those lines lose money. Past 40%, every single line loses money, turning $128,632 of revenue
+into a $99,559 loss. There is no gentle decline between the two, which is what makes a cap
+workable as a policy.
 
-### Provenance
+**2. Discount explains 75.1% of the variance in margin.** An OLS regression of margin on
+discount, quantity, and category dummies gives a discount coefficient of **-195.2** with HC3
+robust standard errors: every 10 points of discount costs **19.5 points of margin**, holding
+quantity and category constant. Since the average full-price line earns 34 points of margin,
+roughly 17 points of discount erases all of it. ANOVA (F = 5,590.1) and Kruskal-Wallis
+(H = 4,672.2) both confirm the tier differences at p below any conventional threshold.
 
-Extracted from the `Orders` sheet of the Tableau Desktop 2020.4 sample workbook
-(`Sample - Superstore.xls`) with `pandas.read_excel`. Two normalizations were applied and nothing
-else. Measures, dates, and text round-trip exactly against the source.
+**3. Five sub-categories are sold past their own break-even discount.** Fitting margin against
+discount within each sub-category and solving for zero gives the ceiling each line's own
+history implies:
 
-- `Country/Region` renamed to `Country`, matching the `dim_geography` column naming.
-- `Postal Code` written as an integer rather than the float pandas infers from the 11 blank values
-  (all Burlington, Vermont). Those 11 blanks are preserved as empty, not imputed.
+| Sub-category | Breaks even at | Actually sold at | Past the ceiling by | Margin |
+| --- | ---: | ---: | ---: | ---: |
+| Tables | 16.4% | 26.1% | 9.7 points | -8.56% |
+| Binders | 28.8% | 37.2% | 8.4 points | 14.86% |
+| Bookcases | 15.4% | 21.1% | 5.7 points | -3.02% |
+| Appliances | 12.2% | 16.7% | 4.5 points | 16.87% |
+| Machines | 27.0% | 30.6% | 3.6 points | 1.79% |
 
-The workbook's `People` (4 rows: regional manager by region) and `Returns` (800 rows: returned
-order IDs) sheets were not exported, since no phase of the analysis uses them.
+**4. 19.2% of customers generate 80% of profit, and the bottom fifth give a quarter of it
+back.** Cumulative profit share peaks at **124.9%** at the 638th of 793 customers, then falls
+to 100%, because 155 customers lose **$71,224** between them. Those customers are not a
+different kind of buyer: their average discount is **23.8% against 15.6% overall**, putting
+them on the wrong side of the same cliff. The pricing problem and the customer problem are one
+problem.
 
-This 2020.4 edition dates orders 2017-2020, while the older and more commonly cited version of
-Superstore covers 2014-2017. Any comparison against published figures from that version will
-differ on absolute dates, though the row count and measures are the same.
+**5. Next quarter forecasts at $159,264, up 29% year over year, with an 18.0% typical error.**
+SARIMA beat Prophet (18.6% MAPE) and a seasonal-naive baseline (25.4%) on a six-month holdout.
+The 80% interval runs $101,846 to $216,682, which is the honest width for a series with only 48
+monthly observations.
+
+## Recommendations
+
+**Cap discounts at the break-even rate for the five sub-categories above.** This is the single
+highest-value change available. Lines already sold past their cap in those five carry
+**$121,494 of losses**, equal to 42% of total company profit. Start with Tables: 247 lines
+above a 16.4% cap, losing $31,002.
+
+One caveat stated plainly, because it decides how the number should be used: that $121,494 is
+an upper bound that assumes volume holds at the lower discount. Some of it would not convert.
+Treat it as the size of the prize, not a committed recovery, and pilot the cap on one
+sub-category before rolling it out.
+
+**Require approval above 20% rather than banning it.** The cliff is sharp enough that a 20%
+threshold is a defensible default across the business, and 4,798 lines already sell at full
+price with a 29.51% margin. Deep discounts should be a deliberate exception with a named
+approver, not a routine lever.
+
+**Give the Central region attention first.** It runs a 7.9% margin with 31.9% of its lines
+losing money, against 14.9% and 9.9% in the West. Its margin fell from 13.5% in 2019 to 5.1% in
+2020 while sales stayed flat, so the trend is going the wrong way.
+
+**Name owners for the top 20 accounts.** They deliver 26.0% of all profit from 2.5% of
+customers. Concentration that high is a risk as much as an asset.
+
+**Leave Paper, Labels, and Envelopes alone as promotional levers.** They break even only past a
+70% discount and are never discounted beyond 20%, so they have genuine headroom if promotion is
+needed.
+
+## Dashboard
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+Sidebar filters for region, segment, category, and date range. Five KPI cards, a monthly trend
+with the SARIMA forecast and its 80% interval overlaid, a discount-against-margin scatter, and
+a sub-category profit ranking. Every element recomputes from the same filtered frame, and the
+forecast refits on whatever is selected.
+
+> Screenshot placeholder: capture the dashboard and save it to
+> `reports/figures/streamlit_dashboard.png`, then embed it here.
 
 ## How to run
-
-This section will grow as each phase lands.
 
 ```bash
 python -m venv .venv
@@ -51,21 +103,25 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Then build the database. Both steps are idempotent, so rerunning them rebuilds from the CSV:
+Then build everything from the raw CSV:
 
 ```bash
-python -m src.ingest                  # load the raw CSV into db/superstore.duckdb as stg_orders
-python -m src.transform_star_schema   # build the four dimensions and fact_sales
+python -m src.ingest                  # raw CSV into DuckDB as stg_orders
+python -m src.transform_star_schema   # four dimensions and fact_sales
 python -m src.data_quality            # validate, write the DQ report, export Parquet
-python -m src.run_sql_report          # run the SQL suite, write the results report
-pytest -q                             # pipeline, data-quality, and SQL tests
+python -m src.run_sql_report          # run both SQL suites, write the results reports
 ```
 
-Later phases add:
+Optional analysis steps:
 
 ```bash
-streamlit run app/streamlit_app.py    # dashboard
+python -m src.profitability           # regression, tier tests, break-even discounts
+python -m src.forecasting             # backtest and next-quarter forecast
+pytest -q                             # 105 tests
+ruff check .                          # lint
 ```
+
+Every step is idempotent, so rerunning rebuilds from the CSV.
 
 ## Data model
 
@@ -95,6 +151,7 @@ erDiagram
         int      quantity       "additive"
         double   discount       "rate 0 to 0.8, average it"
         double   profit         "additive, negative on 1871 rows"
+        boolean  is_loss_making "profit < 0"
     }
 
     dim_customer {
@@ -144,15 +201,37 @@ erDiagram
 | `dim_geography` | 632 | `geography_key` |
 | `dim_date` | 1,464 | `date_key` |
 
-Every dimension uses an integer surrogate key, because none of the natural keys in this
-dataset is unique enough to serve as a primary key. 32 Product IDs are reused across two
-different product names, postal code 92024 covers both San Diego and Encinitas, and 11 rows
-have no postal code at all. `sql/01_schema.sql` documents each key and the reasoning.
+Every dimension uses an integer surrogate key, because none of the natural keys is unique
+enough to serve as a primary key. 32 Product IDs are reused across two different product names,
+postal code 92024 covers both San Diego and Encinitas, and 11 rows have no postal code at all.
+[`sql/01_schema.sql`](sql/01_schema.sql) documents each key and the reasoning.
 
-`dim_date` is a contiguous daily calendar from the first order date to the last ship date,
-1,464 days, rather than only the 1,236 dates on which orders were placed. The gapless spine
-keeps running YTD and month-over-month queries honest about quiet periods, and lets both
+`dim_date` is a contiguous daily calendar from the first order date to the last ship date, 1,464
+days, rather than only the 1,236 dates on which orders were placed. The gapless spine keeps
+running YTD and month-over-month queries honest about quiet periods, and lets both
 `order_date_key` and `ship_date_key` resolve against the same dimension.
+
+## Analysis
+
+| Notebook | Contents |
+| --- | --- |
+| [01_eda.ipynb](notebooks/01_eda.ipynb) | Distributions, category and sub-category rollups, correlation matrix |
+| [02_discount_profit_analysis.ipynb](notebooks/02_discount_profit_analysis.ipynb) | Scatter with fitted line, OLS, ANOVA and Kruskal-Wallis, break-even by sub-category |
+| [03_customer_pareto_clv.ipynb](notebooks/03_customer_pareto_clv.ipynb) | Pareto curve, top 20 accounts, loss-making customers, segment comparison |
+| [04_forecasting.ipynb](notebooks/04_forecasting.ipynb) | Backtest of three models, next-quarter forecast overall and by region |
+
+| SQL suite | Queries | Results |
+| --- | ---: | --- |
+| [02_fundamental_queries.sql](sql/02_fundamental_queries.sql) | 13 | [report](reports/sql_fundamental_results.md) |
+| [03_advanced_queries.sql](sql/03_advanced_queries.sql) | 9 | [report](reports/sql_advanced_results.md) |
+
+The advanced suite is the window-function and CTE work: running YTD per region that resets each
+January, `RANK()` within region, month-over-month and year-over-year growth with `LAG()`, and
+the customer lifetime CTE that feeds the Pareto analysis.
+
+Generated reports: [data quality](reports/data_quality_report.md),
+[discount and profit](reports/discount_profit_analysis.md),
+[forecast](reports/forecast_results.md).
 
 ## Data quality
 
@@ -160,89 +239,80 @@ keeps running YTD and month-over-month queries honest about quiet periods, and l
 [reports/data_quality_report.md](reports/data_quality_report.md). The same checks run as tests,
 so a regression in the source data fails the build rather than quietly reaching the analysis.
 
-Six checks pass outright: Row ID is unique, no line ships before it is ordered, all five foreign
-keys resolve with no nulls, measures stay in range, attributes are complete apart from a known
-gap, and the repeated order/product pairs are split lines rather than errors.
+Six pass outright: Row ID is unique, no line ships before it is ordered, all five foreign keys
+resolve with no nulls, measures stay in range, attributes are complete apart from a known gap,
+and the repeated order/product pairs are split lines rather than errors.
 
-Two findings need a human call rather than a code fix:
+Two findings need a human decision rather than a code fix, and are documented rather than
+silently corrected:
 
 - **11 rows have no postal code**, all in Burlington, Vermont. Preserved as null rather than
-  imputed, so any geography rollup on postal code excludes them.
-- **Rows 3406 and 3407 are byte-identical** across every field, on order `US-2017-150119`. This
-  is the one true duplicate in the file, as against seven legitimate split lines. It is left in
-  place, since dropping a source row is an analytical decision rather than a transform decision.
+  imputed, so any geography rollup keyed on postal code excludes them.
+- **Rows 3406 and 3407 are byte-identical** on order `US-2017-150119`. This is the one true
+  duplicate in the file, as against seven legitimate split lines. Left in place, since dropping
+  a source row is an analytical decision rather than a transform decision.
 
-The headline number for the analysis ahead: `is_loss_making` (`profit < 0`) flags **1,871 of
-9,994 line items, 18.7%**, carrying **$468,707.15 of the $2,297,200.86 in sales, 20.4%**. Those
-lines lose $156,131.29 against the $442,528.31 the profitable lines earn, so roughly a third of
-gross profit is being erased before it reaches the bottom line.
+## Dataset
 
-## SQL analysis
+`data/raw/Sample_Superstore.csv` holds 9,994 US retail order-line records covering customer,
+product, geography, sales, quantity, discount, and profit fields. Orders span 2017-01-03 to
+2020-12-30, and ship dates run through 2021-01-05.
 
-Two suites, 22 queries, each tagged with the business question it answers.
-`python -m src.run_sql_report` runs both and writes the results with the SQL side by side.
-Every query also runs as a test, so a renamed column breaks the build rather than the report.
+| Field group | Columns |
+| --- | --- |
+| Order | Row ID, Order ID, Order Date, Ship Date, Ship Mode |
+| Customer | Customer ID, Customer Name, Segment |
+| Geography | Country, City, State, Postal Code, Region |
+| Product | Product ID, Category, Sub-Category, Product Name |
+| Measures | Sales, Quantity, Discount, Profit |
 
-| Suite | Queries | Covers | Results |
-| --- | ---: | --- | --- |
-| [`02_fundamental_queries.sql`](sql/02_fundamental_queries.sql) | 13 | Sales, profit and margin by region, segment and category; region by category cross-tab; top and bottom sub-categories; yearly and monthly trend; seasonality; discount depth; fulfilment mix | [report](reports/sql_fundamental_results.md) |
-| [`03_advanced_queries.sql`](sql/03_advanced_queries.sql) | 9 | Running YTD by region, sub-category rank within region, month-over-month and year-over-year growth, customer lifetime value, profit Pareto, loss-making customers | [report](reports/sql_advanced_results.md) |
+This is the widely distributed Tableau/community "Sample - Superstore" dataset, used here for
+demonstration and portfolio purposes. It is not proprietary company data, and no finding in this
+repository describes a real business.
 
-### Discounting is where the margin goes
+### Provenance
 
-Banding every order line by its discount rate shows where the business stops making money:
+Extracted from the `Orders` sheet of the Tableau Desktop 2020.4 sample workbook
+(`Sample - Superstore.xls`) with `pandas.read_excel`. Two normalizations were applied and nothing
+else. Measures, dates, and text round-trip exactly against the source.
 
-| Discount | Lines | Sales | Profit | Margin | Loss-making lines |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 0% | 4,798 | 1,087,908.47 | 320,987.60 | 29.51% | 0.0% |
-| 1-10% | 94 | 54,369.35 | 9,029.18 | 16.61% | 4.3% |
-| 11-20% | 3,709 | 792,152.89 | 91,756.30 | 11.58% | 14.0% |
-| 21-30% | 227 | 103,226.65 | -10,369.28 | -10.05% | 91.6% |
-| 31-40% | 233 | 130,911.24 | -25,448.19 | -19.44% | 88.8% |
-| 41%+ | 933 | 128,632.25 | -99,558.59 | -77.40% | 100.0% |
+- `Country/Region` renamed to `Country`, matching the `dim_geography` column naming.
+- `Postal Code` written as an integer rather than the float pandas infers from the 11 blank
+  values (all Burlington, Vermont). Those 11 blanks are preserved as empty, not imputed.
 
-Margin survives a 20% discount and collapses immediately above it. Past 20%, more than nine
-in ten lines lose money, and every line discounted 41% or more does. The 933 lines in that
-last band turn $128,632 of revenue into a $99,559 loss.
+The workbook's `People` (4 rows) and `Returns` (800 rows) sheets were not exported, since no
+phase of the analysis uses them.
 
-One caveat on reading that table: discounts in this dataset cluster at 0% and 20% rather than
-spreading evenly, and the 1-10% band holds only 94 lines. The cliff between the 11-20% and
-21-30% bands is well evidenced, but the shape in between is not.
+This 2020.4 edition dates orders 2017-2020, while the older and more commonly cited version of
+Superstore covers 2014-2017. Any comparison against published figures from that version will
+differ on absolute dates, though the row count and measures are the same.
 
-### Profit is concentrated, and some customers cost money
+## Tech stack
 
-The Pareto query ranks all 793 customers by lifetime profit and accumulates their share:
+| Layer | Tools |
+| --- | --- |
+| Storage and query | DuckDB, Parquet, SQL (window functions, CTEs) |
+| Transform | Python, pandas, a dimensional star schema |
+| Statistics | statsmodels (OLS with HC3 robust errors), scipy (ANOVA, Kruskal-Wallis, Levene) |
+| Forecasting | SARIMA (statsmodels), Prophet, seasonal-naive baseline, MAPE and RMSE backtesting |
+| Visualization | Matplotlib for the notebooks, Plotly for the dashboard, a colour-vision-validated palette |
+| Application | Streamlit |
+| Quality | pytest (105 tests), ruff, GitHub Actions |
 
-| Share of customers | Share of profit |
-| --- | ---: |
-| Top 5% | 39.0% |
-| Top 10% | 57.3% |
-| Top 20% | 81.4% |
-| Top 30% | 97.1% |
+## External BI
 
-Cumulative share passes 100% and keeps climbing to a peak of 124.9% at the 638th customer,
-because the remaining 155 give profit back. Those 155 loss-making customers, 19.5% of the
-book, lose $71,224 between them. Their average discount is 23.8% against 15.6% overall,
-which lands them on the wrong side of the cliff in the table above.
-
-Regionally, Tables is the worst sub-category in both the East and the South, Furnishings in
-Central, and Bookcases in the West. Central is the weakest region overall at a 7.9% margin
-with 31.9% of its lines losing money, against the West at 14.9% and 9.9%.
-
-## Key findings
-
-Populated with real numbers once the analysis runs.
+> Power BI dashboard placeholder: publish the report and link it here.
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
 | `data/raw/` | Source CSV (committed) |
-| `data/processed/` | Cleaned star-schema Parquet outputs (gitignored) |
+| `data/processed/` | Star-schema Parquet outputs (gitignored) |
 | `db/` | Local DuckDB database (gitignored) |
-| `sql/` | Schema, fundamental queries, advanced queries, views |
-| `src/` | Ingest, transform, data quality, SQL runner, profitability, forecasting |
-| `notebooks/` | EDA, discount/profit, Pareto/CLV, forecasting |
+| `sql/` | Schema documentation, fundamental queries, advanced queries, views |
+| `src/` | Ingest, transform, data quality, SQL runner, profitability, forecasting, plotting |
+| `notebooks/` | EDA, discount and profit, Pareto and CLV, forecasting |
 | `app/` | Streamlit dashboard |
-| `tests/` | Data-quality and pipeline tests |
-| `reports/` | Data quality report, findings write-up, and figures |
+| `tests/` | Pipeline, data-quality, SQL, and analysis tests |
+| `reports/` | Generated reports and figures |
