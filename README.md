@@ -96,8 +96,10 @@ with the SARIMA forecast and its 80% interval overlaid, a discount-against-margi
 a sub-category profit ranking. Every element recomputes from the same filtered frame, and the
 forecast refits on whatever is selected.
 
-> Screenshot placeholder: capture the dashboard and save it to
-> `reports/figures/streamlit_dashboard.png`, then embed it here.
+![The Superstore sales operations dashboard: filters, KPI cards, and the monthly sales trend with the SARIMA forecast overlaid](reports/figures/streamlit_dashboard.png)
+
+Below the fold, not shown above: the discount-against-margin scatter and the sub-category
+profit ranking, side by side, plus an expander with the underlying table.
 
 ## How to run
 
