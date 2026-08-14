@@ -119,7 +119,7 @@ def test_ytd_resets_each_january(con):
 
 def test_sub_category_rank_runs_one_to_seventeen_in_every_region(con):
     ranked = run_query(con, advanced_by_name()["sub_category_profit_rank_by_region"])
-    for region, group in ranked.groupby("region"):
+    for _region, group in ranked.groupby("region"):
         assert sorted(group["profit_rank"]) == list(range(1, 18))
         best = group.loc[group["profit_rank"] == 1, "profit"].iloc[0]
         assert best == group["profit"].max()

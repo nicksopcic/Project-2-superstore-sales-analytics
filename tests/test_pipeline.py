@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from src.data_quality import export_processed_tables
 from src.ingest import EXPECTED_ROWS, STAGING_COLUMNS
 from src.transform_star_schema import build_star_schema
-from src.data_quality import export_processed_tables
 from src.utils import DIMENSION_TABLES, FACT_TABLE, row_count
 
 EXPECTED_COUNTS = {
@@ -28,7 +28,7 @@ def test_staging_keeps_the_source_columns(con):
 
 
 def test_staging_parses_dates_as_dates(con):
-    types = dict((row[0], row[1]) for row in con.execute("DESCRIBE stg_orders").fetchall())
+    types = {row[0]: row[1] for row in con.execute("DESCRIBE stg_orders").fetchall()}
     assert types["Order Date"] == "DATE"
     assert types["Ship Date"] == "DATE"
 

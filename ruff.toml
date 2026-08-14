@@ -1,0 +1,30 @@
+# Lint configuration. Run with: ruff check .
+
+line-length = 100
+target-version = "py313"
+
+exclude = [".venv", "notebooks", "data", "db"]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplify
+]
+ignore = [
+    "E501",  # line length is handled by the formatter setting above, not as an error
+    "C408",  # dict(...) over a literal: the house style for Plotly and Matplotlib config,
+             # where keyword form reads better than a wall of quoted keys
+]
+
+[lint.per-file-ignores]
+# The Streamlit entry point has to extend sys.path before importing from src, so its imports
+# cannot all sit at the top of the file.
+"app/streamlit_app.py" = ["E402"]
+# Tests import inside functions on purpose, to keep Streamlit out of collection.
+"tests/*" = ["E402"]

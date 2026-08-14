@@ -14,3 +14,9 @@ scikit-learn==1.9.0
 pytest==9.1.1
 jupyterlab==4.6.3
 streamlit==1.61.1
+
+# Statistical tests in src/profitability.py import scipy directly.
+scipy==1.18.0
+
+# Linting, run in CI.
+ruff==0.16.3

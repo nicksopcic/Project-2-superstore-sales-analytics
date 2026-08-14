@@ -22,5 +22,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Lint
+        run: ruff check .
+
+      - name: Build the pipeline
+        # The raw CSV is committed, so CI builds the database from scratch. This is the
+        # end-to-end smoke test: ingest, transform, validate, then run both SQL suites.
+        run: |
+          python -m src.ingest
+          python -m src.transform_star_schema
+          python -m src.data_quality
+          python -m src.run_sql_report
+
+      - name: Test
         run: pytest -q
