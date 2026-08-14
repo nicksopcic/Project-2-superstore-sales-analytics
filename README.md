@@ -84,8 +84,12 @@ needed.
 ## Dashboard
 
 ```bash
-streamlit run app/streamlit_app.py
+.venv\Scripts\python.exe -m streamlit run app/streamlit_app.py
 ```
+
+Then open http://localhost:8501. Calling the virtualenv's Python directly avoids depending on
+the environment being activated first, which is the usual reason this command fails on Windows.
+See [Troubleshooting](#troubleshooting).
 
 Sidebar filters for region, segment, category, and date range. Five KPI cards, a monthly trend
 with the SARIMA forecast and its 80% interval overlaid, a discount-against-margin scatter, and
@@ -99,29 +103,88 @@ forecast refits on whatever is selected.
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Then build everything from the raw CSV:
 
 ```bash
-python -m src.ingest                  # raw CSV into DuckDB as stg_orders
-python -m src.transform_star_schema   # four dimensions and fact_sales
-python -m src.data_quality            # validate, write the DQ report, export Parquet
-python -m src.run_sql_report          # run both SQL suites, write the results reports
+.venv\Scripts\python.exe -m src.ingest
 ```
+
+```bash
+.venv\Scripts\python.exe -m src.transform_star_schema
+```
+
+```bash
+.venv\Scripts\python.exe -m src.data_quality
+```
+
+```bash
+.venv\Scripts\python.exe -m src.run_sql_report
+```
+
+That is: raw CSV into DuckDB as `stg_orders`, then the four dimensions and `fact_sales`, then
+validation plus the Parquet export, then both SQL suites. Every step is idempotent, so
+rerunning rebuilds from the CSV.
 
 Optional analysis steps:
 
 ```bash
-python -m src.profitability           # regression, tier tests, break-even discounts
-python -m src.forecasting             # backtest and next-quarter forecast
-pytest -q                             # 105 tests
-ruff check .                          # lint
+.venv\Scripts\python.exe -m src.profitability   # regression, tier tests, break-even discounts
 ```
 
-Every step is idempotent, so rerunning rebuilds from the CSV.
+```bash
+.venv\Scripts\python.exe -m src.forecasting     # backtest and next-quarter forecast
+```
+
+```bash
+.venv\Scripts\python.exe -m pytest -q
+```
+
+```bash
+.venv\Scripts\python.exe -m ruff check .
+```
+
+Every command calls the virtualenv's Python explicitly rather than assuming an activated
+environment. On macOS and Linux the equivalent is `.venv/bin/python`. If you prefer to activate
+first, see [Troubleshooting](#troubleshooting) for the Windows caveat.
+
+## Troubleshooting
+
+**`streamlit : The term 'streamlit' is not recognized`** or the same for `python -m src...`
+failing on imports. The virtualenv is not active, so the commands are running against a
+different Python. Either use the explicit `.venv\Scripts\python.exe -m ...` form above, which
+always works, or activate the environment first.
+
+**`Activate.ps1 cannot be loaded because running scripts is disabled on this system`.** This is
+the usual reason activation silently does not happen on a fresh Windows install: PowerShell
+ships with the execution policy set to `Restricted`, which blocks the activation script. Three
+options, in order of preference:
+
+1. Skip activation and use `.venv\Scripts\python.exe -m ...` everywhere, as above.
+2. Switch to Command Prompt and use the batch activator, which the policy does not block.
+   Note this only works in `cmd.exe`: running it from PowerShell appears to succeed but sets
+   nothing, because the batch file's environment changes die with the subprocess.
+   ```bash
+   .venv\Scripts\activate.bat
+   ```
+3. Permit local scripts for your user account. This changes a Windows security setting, so read
+   what it does before running it:
+   ```bash
+   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+   ```
+
+**`Port 8501 is already in use`.** An earlier Streamlit is still running. Either point the new
+one somewhere else with `--server.port 8502`, or find and stop the old process:
+
+```bash
+Get-NetTCPConnection -State Listen -LocalPort 8501 | Select-Object OwningProcess
+```
+
+**`FileNotFoundError: Missing Parquet for fact_sales`.** The dashboard and the notebooks read
+`data/processed/`, which is gitignored and therefore absent on a fresh clone. Run the four build
+commands above first.
 
 ## Data model
 

@@ -415,8 +415,8 @@ ORDER BY avg_discount DESC
 | Envelopes | Office Supplies | 254 | 0.0803 | 0.2 | 40.20 | 6,964.18 | 42.27 |
 | Accessories | Technology | 775 | 0.0785 | 0.2 | 39.20 | 41,936.64 | 25.05 |
 | Supplies | Office Supplies | 190 | 0.0768 | 0.2 | 38.40 | -1,189.10 | -2.55 |
-| Art | Office Supplies | 796 | 0.0749 | 0.2 | 37.40 | 6,527.79 | 24.07 |
 | Paper | Office Supplies | 1,370 | 0.0749 | 0.2 | 37.40 | 34,053.57 | 43.39 |
+| Art | Office Supplies | 796 | 0.0749 | 0.2 | 37.40 | 6,527.79 | 24.07 |
 | Storage | Office Supplies | 846 | 0.0747 | 0.2 | 37.40 | 21,278.83 | 9.51 |
 | Labels | Office Supplies | 364 | 0.0687 | 0.2 | 34.30 | 5,546.25 | 44.42 |
 
