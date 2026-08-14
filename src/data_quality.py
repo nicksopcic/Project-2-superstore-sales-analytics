@@ -15,15 +15,14 @@ import pandas as pd
 
 from src.utils import (
     EXPORT_TABLES,
-    FACT_TABLE,
     PROCESSED_DIR,
     PROJECT_ROOT,
     REPORTS_DIR,
+    connect,
     markdown_table,
     require_star_schema,
     row_count,
     table_exists,
-    connect,
 )
 
 REPORT_PATH = REPORTS_DIR / "data_quality_report.md"
