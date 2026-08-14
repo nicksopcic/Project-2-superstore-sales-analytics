@@ -202,6 +202,22 @@ def test_margin_turns_negative_above_a_twenty_percent_discount(con):
     assert bands.loc["41%+", "margin_pct"] < 0
 
 
+@pytest.mark.parametrize(
+    "query", fundamental_queries() + advanced_queries(), ids=lambda q: q.name
+)
+def test_query_row_order_is_stable(con, query):
+    """Every query must return rows in the same order every time.
+
+    DuckDB parallelises aggregation, so an ORDER BY on a value that ties leaves the tied rows
+    in whatever order the threads finished in. That made the generated report churn between
+    runs: Paper and Art both round to a 0.0749 average discount and swapped places. Every
+    ORDER BY now carries a unique tiebreaker, and this test holds that.
+    """
+    first = run_query(con, query)
+    second = run_query(con, query)
+    assert first.equals(second), f"{query.name} returned rows in a different order on rerun"
+
+
 def test_parser_ignores_the_file_preamble():
     parsed = parse_queries(
         """

@@ -57,7 +57,7 @@ FROM fact_sales f
 JOIN dim_geography g USING (geography_key)
 JOIN dim_product p USING (product_key)
 GROUP BY g.region, p.sub_category
-ORDER BY g.region, profit_rank;
+ORDER BY g.region, profit_rank, p.sub_category;
 
 
 -- name: worst_sub_category_per_region
@@ -83,7 +83,7 @@ SELECT
     round(100.0 * profit / sales, 2) AS margin_pct
 FROM ranked
 WHERE loss_rank = 1
-ORDER BY profit;
+ORDER BY profit, region;
 
 
 -- name: month_over_month_sales_growth
@@ -193,7 +193,7 @@ SELECT
     last_order,
     date_diff('day', first_order, last_order) AS days_active
 FROM customer_lifetime
-ORDER BY lifetime_profit DESC;
+ORDER BY lifetime_profit DESC, customer_id;
 
 
 -- name: customer_profit_pareto
@@ -224,11 +224,11 @@ ranked AS (
         orders,
         lifetime_sales,
         lifetime_profit,
-        ROW_NUMBER() OVER (ORDER BY lifetime_profit DESC) AS profit_rank,
+        ROW_NUMBER() OVER (ORDER BY lifetime_profit DESC, customer_id) AS profit_rank,
         count(*) OVER ()                                  AS total_customers,
         sum(lifetime_profit) OVER ()                      AS total_profit,
         sum(lifetime_profit) OVER (
-            ORDER BY lifetime_profit DESC
+            ORDER BY lifetime_profit DESC, customer_id
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS cumulative_profit
     FROM customer_lifetime
@@ -274,4 +274,4 @@ SELECT
     round(avg_discount, 4)    AS avg_discount
 FROM customer_lifetime
 WHERE lifetime_profit < 0
-ORDER BY lifetime_profit;
+ORDER BY lifetime_profit, customer_id;

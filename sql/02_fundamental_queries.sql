@@ -23,7 +23,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_geography g USING (geography_key)
 GROUP BY g.region
-ORDER BY profit DESC;
+ORDER BY profit DESC, g.region;
 
 
 -- name: sales_profit_margin_by_segment
@@ -40,7 +40,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_customer c USING (customer_key)
 GROUP BY c.segment
-ORDER BY profit DESC;
+ORDER BY profit DESC, c.segment;
 
 
 -- name: sales_profit_margin_by_category
@@ -56,7 +56,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_product p USING (product_key)
 GROUP BY p.category
-ORDER BY profit DESC;
+ORDER BY profit DESC, p.category;
 
 
 -- name: margin_by_region_and_category
@@ -73,7 +73,7 @@ FROM fact_sales f
 JOIN dim_geography g USING (geography_key)
 JOIN dim_product p USING (product_key)
 GROUP BY g.region, p.category
-ORDER BY margin_pct;
+ORDER BY margin_pct, g.region, p.category;
 
 
 -- name: top_10_sub_categories_by_profit
@@ -88,7 +88,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_product p USING (product_key)
 GROUP BY p.sub_category, p.category
-ORDER BY profit DESC
+ORDER BY profit DESC, p.sub_category
 LIMIT 10;
 
 
@@ -106,7 +106,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_product p USING (product_key)
 GROUP BY p.sub_category, p.category
-ORDER BY profit
+ORDER BY profit, p.sub_category
 LIMIT 10;
 
 
@@ -170,7 +170,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_product p USING (product_key)
 GROUP BY p.category
-ORDER BY avg_discount DESC;
+ORDER BY avg_discount DESC, p.category;
 
 
 -- name: avg_discount_by_sub_category
@@ -189,7 +189,7 @@ SELECT
 FROM fact_sales f
 JOIN dim_product p USING (product_key)
 GROUP BY p.sub_category, p.category
-ORDER BY avg_discount DESC;
+ORDER BY avg_discount DESC, p.sub_category;
 
 
 -- name: margin_by_discount_band
@@ -225,4 +225,4 @@ SELECT
     round(100.0 * sum(f.profit) / sum(f.sales), 2)      AS margin_pct
 FROM fact_sales f
 GROUP BY f.ship_mode
-ORDER BY order_lines DESC;
+ORDER BY order_lines DESC, f.ship_mode;
