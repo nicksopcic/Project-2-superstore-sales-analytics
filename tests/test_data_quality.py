@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.utils import (
+from src.data_quality import (
     check_completeness,
     check_exact_duplicate_lines,
     check_measure_ranges,

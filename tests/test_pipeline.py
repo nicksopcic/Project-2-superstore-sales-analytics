@@ -6,7 +6,8 @@ import pytest
 
 from src.ingest import EXPECTED_ROWS, STAGING_COLUMNS
 from src.transform_star_schema import build_star_schema
-from src.utils import DIMENSION_TABLES, FACT_TABLE, export_processed_tables, row_count
+from src.data_quality import export_processed_tables
+from src.utils import DIMENSION_TABLES, FACT_TABLE, row_count
 
 EXPECTED_COUNTS = {
     "dim_customer": 793,
@@ -112,7 +113,7 @@ def test_transform_is_idempotent(con):
 
 
 def test_parquet_export_round_trips(con, tmp_path, monkeypatch):
-    monkeypatch.setattr("src.utils.PROCESSED_DIR", tmp_path)
+    monkeypatch.setattr("src.data_quality.PROCESSED_DIR", tmp_path)
     written = export_processed_tables(con)
 
     assert set(written) == {f"{t}.parquet" for t in (FACT_TABLE, *DIMENSION_TABLES)}
