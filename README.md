@@ -148,10 +148,6 @@ Optional analysis steps:
 .venv\Scripts\python.exe -m ruff check .
 ```
 
-```bash
-.venv\Scripts\python.exe -m src.export_bi   # star schema as CSVs for Power BI
-```
-
 Every command calls the virtualenv's Python explicitly rather than assuming an activated
 environment. On macOS and Linux the equivalent is `.venv/bin/python`. If you prefer to activate
 first, see [Troubleshooting](#troubleshooting) for the Windows caveat.
@@ -366,22 +362,7 @@ differ on absolute dates, though the row count and measures are the same.
 | Forecasting | SARIMA (statsmodels), Prophet, seasonal-naive baseline, MAPE and RMSE backtesting |
 | Visualization | Matplotlib for the notebooks, Plotly for the dashboard, a colour-vision-validated palette |
 | Application | Streamlit |
-| Quality | pytest (105 tests), ruff, GitHub Actions |
-
-## External BI
-
-The Power BI report is built by hand on top of the same star schema. Export the tables first:
-
-```bash
-.venv\Scripts\python.exe -m src.export_bi
-```
-
-That writes one CSV per table to `reports/bi_exports/`, plus a
-[setup guide](reports/bi_exports/README.md) covering the import settings, the relationships to
-build, and the DAX measures to paste. The CSVs are gitignored, since they are derived from the
-committed raw file and rebuilt by rerunning the command.
-
-> Published report placeholder: publish to the Power BI Service and link it here.
+| Quality | pytest (127 tests), ruff, GitHub Actions |
 
 ## Repository layout
 

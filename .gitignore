@@ -16,8 +16,5 @@ db/*.duckdb
 # Streamlit
 .streamlit/
 
-# Power BI extracts, rebuilt by python -m src.export_bi. The guide beside them is tracked.
-reports/bi_exports/*.csv
-
 # Local working instructions, not part of the published project
 CLAUDE.md
